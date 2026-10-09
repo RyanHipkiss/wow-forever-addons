@@ -13,6 +13,7 @@ local DEFAULTS = {
 	},
 	prices = {},   -- [realmKey] = { scanTime, auctions, items = { [itemID] = { min, mkt, qty } } }
 	vendor = {},   -- [itemID] = unit price paid to a merchant
+	history = {},  -- [realmKey] = daily profit history for the browser dashboard (see History.lua)
 	chars = {},    -- [charKey] = { professions = { [name] = { updated, recipes = { [recipeID] = recipe } } } }
 }
 

@@ -11,4 +11,5 @@ Prices.lua
 Scanner.lua
 Recipes.lua
 Profit.lua
+History.lua
 UI.lua

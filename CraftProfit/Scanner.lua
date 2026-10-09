@@ -135,7 +135,8 @@ function Scanner:Finish()
 	}
 	self.listings = nil
 	self.state = "idle"
-	CP:Print(("Scan complete: %d auctions, %d different items."):format(self.auctions, count))
+	CP.History:Record()
+	CP:Print(("Scan complete: %d auctions, %d different items. /reload to update the dashboard."):format(self.auctions, count))
 	-- Jump straight to the profitable recipes, best first.
 	CP.db.settings.profitableOnly = true
 	CP.UI.sortKey, CP.UI.sortDesc = "profit", true

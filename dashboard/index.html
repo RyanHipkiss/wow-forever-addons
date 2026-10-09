@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CraftProfit Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f3f0;
+    --surface-1: #fcfcfb;
+    --surface-2: #f0efec;
+    --border: #e2e1dc;
+    --grid: #e7e6e1;
+    --axis: #b9b8b1;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #77766f;
+    --series-1: #2a78d6;
+    --good: #0ca30c;
+    --good-text: #006300;
+    --critical: #d03b3b;
+    --critical-text: #b02a2a;
+    --good-bg: #e7f5e7;
+    --critical-bg: #fbeaea;
+    --accent: #2a78d6;
+    --shadow: 0 1px 2px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #121211;
+      --surface-1: #1a1a19;
+      --surface-2: #232321;
+      --border: #2f2f2c;
+      --grid: #2c2c29;
+      --axis: #55554f;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #96958c;
+      --series-1: #3987e5;
+      --good-text: #4cc94c;
+      --critical-text: #ef7a7a;
+      --good-bg: #16301a;
+      --critical-bg: #3a1b1b;
+      --accent: #3987e5;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232321;
+    --border: #2f2f2c;
+    --grid: #2c2c29;
+    --axis: #55554f;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #96958c;
+    --series-1: #3987e5;
+    --good-text: #4cc94c;
+    --critical-text: #ef7a7a;
+    --good-bg: #16301a;
+    --critical-bg: #3a1b1b;
+    --accent: #3987e5;
+    --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 20px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .meta { color: var(--text-secondary); font-size: 13px; }
+  .spacer { flex: 1; }
+  select, input[type=search] {
+    font: inherit; color: var(--text-primary); background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px;
+  }
+  button.link { font: inherit; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; }
+
+  .panel {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; box-shadow: var(--shadow);
+  }
+  section { margin-bottom: 20px; }
+
+  /* Alerts */
+  .alerts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .alert {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center;
+    padding: 10px 12px; border-radius: 8px; background: var(--good-bg);
+  }
+  .alert .icon {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--good); color: #fff;
+    display: grid; place-items: center; font-size: 13px; font-weight: 700;
+  }
+  .alert .what { font-weight: 600; }
+  .alert .detail { color: var(--text-secondary); font-size: 13px; }
+  .alert .amount { font-weight: 700; color: var(--good-text); text-align: right; white-space: nowrap; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-secondary); margin-left: 6px; vertical-align: 1px;
+  }
+  .empty { color: var(--text-secondary); margin: 0; }
+
+  /* Tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .tile .label { color: var(--text-secondary); font-size: 12px; }
+  .tile .value { font-size: 24px; font-weight: 650; margin-top: 2px; }
+  .tile .sub { color: var(--text-muted); font-size: 12px; }
+
+  /* Controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 12px; }
+  .controls label { color: var(--text-secondary); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+
+  /* Recipe cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
+  @media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
+  .card { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .card-head { display: flex; gap: 12px; align-items: flex-start; }
+  .card-title { flex: 1; min-width: 0; }
+  .name { font-weight: 650; font-size: 15px; overflow-wrap: anywhere; }
+  .qdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; box-shadow: 0 0 0 1px var(--axis); }
+  .who { color: var(--text-secondary); font-size: 12px; }
+  .profit { text-align: right; white-space: nowrap; }
+  .profit .big { font-size: 20px; font-weight: 700; }
+  .profit .per { color: var(--text-muted); font-size: 11px; }
+  .neg { color: var(--critical-text); }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--text-secondary); }
+  .facts strong { color: var(--text-primary); font-weight: 600; }
+  .delta { font-weight: 600; white-space: nowrap; }
+  .delta.up { color: var(--good-text); }
+  .delta.down { color: var(--critical-text); }
+  .stale { color: var(--text-muted); font-size: 12px; }
+
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: 150px; overflow: visible; }
+  .chart svg:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .chart .note { color: var(--text-muted); font-size: 12px; margin: 4px 0 0; }
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 5; min-width: 150px;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.15); padding: 8px 10px; font-size: 12px; display: none;
+  }
+  .tooltip .t-date { font-weight: 650; margin-bottom: 4px; }
+  .tooltip .row { display: flex; justify-content: space-between; gap: 12px; color: var(--text-secondary); }
+  .tooltip .row b { color: var(--text-primary); font-weight: 600; }
+
+  .mats { margin: 0; padding: 0; list-style: none; font-size: 13px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .mats li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+  .mats .src { color: var(--text-muted); font-size: 12px; }
+  details { font-size: 13px; }
+  summary { cursor: pointer; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
+  th, td { text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  .table-scroll { max-height: 220px; overflow: auto; }
+
+  .setup { max-width: 640px; }
+  .setup code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>CraftProfit</h1>
+    <span class="meta" id="meta"></span>
+    <span class="spacer"></span>
+    <select id="realm" aria-label="Realm" hidden></select>
+  </header>
+  <main id="app"><p class="empty">Loading…</p></main>
+</div>
+
+<script>
+'use strict';
+const themeParam = new URLSearchParams(location.search).get('theme');
+if (themeParam === 'light' || themeParam === 'dark') document.documentElement.dataset.theme = themeParam;
+const QUALITY = ['#9d9d9d', '#ffffff', '#1eff00', '#0070dd', '#a335ee', '#ff8000', '#e6cc80'];
+const state = { data: null, realm: null, sort: 'profit', query: '', showAll: false };
+try { Object.assign(state, JSON.parse(localStorage.getItem('craftprofit-view') || '{}'), { data: null }); } catch {}
+const saveView = () => { try { localStorage.setItem('craftprofit-view', JSON.stringify({ realm: state.realm, sort: state.sort, showAll: state.showAll })); } catch {} };
+
+// Helpers ------------------------------------------------------------------------
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') node.className = v;
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of children.flat()) if (c != null && c !== false) node.append(c instanceof Node ? c : String(c));
+  return node;
+}
+function money(copper, { short = false } = {}) {
+  if (copper == null) return '—';
+  const neg = copper < 0;
+  let c = Math.round(Math.abs(copper));
+  const g = Math.floor(c / 10000), s = Math.floor(c / 100) % 100; c = c % 100;
+  const parts = [];
+  if (g) parts.push(g.toLocaleString() + 'g');
+  if (s || (g && !short)) parts.push(s + 's');
+  if (!short || !g) parts.push(c + 'c');
+  if (short && g) parts.length = Math.min(parts.length, 2);
+  return (neg ? '−' : '') + parts.join(' ');
+}
+const pct = (v) => v == null ? '—' : (v >= 0 ? '' : '−') + Math.abs(v * 100).toFixed(0) + '%';
+const fmtDay = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+function ago(ms) {
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + ' min ago';
+  const h = Math.round(m / 60);
+  if (h < 48) return h + ' h ago';
+  return Math.round(h / 24) + ' days ago';
+}
+const qdot = (q) => el('span', { class: 'qdot', style: `background:${QUALITY[q] || QUALITY[1]}`, 'aria-hidden': 'true' });
+
+// Chart: one series (profit per craft) over time ---------------------------------
+function niceTicks(min, max, count = 3) {
+  const span = max - min || 1;
+  const step0 = span / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= count + 1) || mag * 10;
+  const ticks = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) ticks.push(Math.round(v));
+  return ticks;
+}
+
+function drawChart(container, recipe) {
+  const pts = recipe.series.filter((p) => p.profit != null);
+  container.textContent = '';
+  if (!pts.length) { container.append(el('p', { class: 'note' }, 'No profit data yet.')); return; }
+
+  const W = Math.max(260, container.clientWidth), H = 150;
+  const m = { l: 58, r: 12, t: 10, b: 24 };
+  const days = pts.map((p) => Date.parse(p.d + 'T00:00:00Z'));
+  let x0 = days[0], x1 = days[days.length - 1];
+  if (x0 === x1) { x0 -= 86400000; x1 += 86400000; }
+  let y0 = Math.min(0, ...pts.map((p) => p.profit)), y1 = Math.max(0, ...pts.map((p) => p.profit));
+  const pad = (y1 - y0 || Math.abs(y1) || 100) * 0.12;
+  if (y1 > 0) y1 += pad; if (y0 < 0) y0 -= pad;
+  if (y0 === y1) y1 = y0 + 100;
+  const X = (t) => m.l + (t - x0) / (x1 - x0) * (W - m.l - m.r);
+  const Y = (v) => m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b);
+  const NS = 'http://www.w3.org/2000/svg';
+  const s = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', tabindex: '0',
+    'aria-label': `Profit per craft for ${recipe.name} over ${pts.length} scanned days, now ${money(pts[pts.length - 1].profit)}` });
+
+  for (const t of niceTicks(y0, y1)) {
+    const y = Y(t);
+    svg.append(s('line', { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: t === 0 ? 'var(--axis)' : 'var(--grid)', 'stroke-width': 1 }));
+    const label = s('text', { x: m.l - 6, y: y + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--text-muted)' });
+    label.textContent = money(t, { short: true });
+    svg.append(label);
+  }
+  if (y0 < 0 && y1 > 0 && !niceTicks(y0, y1).includes(0)) {
+    svg.append(s('line', { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: 'var(--axis)', 'stroke-width': 1 }));
+  }
+  [[0, 'start'], [pts.length - 1, 'end']].forEach(([idx, anchor]) => {
+    if (idx === 0 && pts.length === 1) anchor = 'middle';
+    const t = s('text', { x: X(days[idx]), y: H - 6, 'text-anchor': anchor, 'font-size': 11, fill: 'var(--text-muted)' });
+    t.textContent = fmtDay(pts[idx].d);
+    svg.append(t);
+  });
+
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${X(days[i]).toFixed(1)},${Y(p.profit).toFixed(1)}`).join('');
+  if (pts.length > 1) {
+    const area = `${line}L${X(days[days.length - 1]).toFixed(1)},${Y(0)}L${X(days[0]).toFixed(1)},${Y(0)}Z`;
+    svg.append(s('path', { d: area, fill: 'var(--series-1)', 'fill-opacity': 0.1 }));
+    svg.append(s('path', { d: line, fill: 'none', stroke: 'var(--series-1)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  }
+  const last = pts.length - 1;
+  svg.append(s('circle', { cx: X(days[last]), cy: Y(pts[last].profit), r: 4, fill: 'var(--series-1)', stroke: 'var(--surface-1)', 'stroke-width': 2 }));
+
+  // Crosshair + tooltip
+  const cross = s('line', { y1: m.t, y2: H - m.b, stroke: 'var(--axis)', 'stroke-width': 1, visibility: 'hidden' });
+  const dot = s('circle', { r: 4, fill: 'var(--series-1)', stroke: 'var(--surface-1)', 'stroke-width': 2, visibility: 'hidden' });
+  svg.append(cross, dot);
+  const tip = el('div', { class: 'tooltip', role: 'status' });
+  let current = -1;
+
+  function show(i) {
+    current = i;
+    const p = pts[i], x = X(days[i]), y = Y(p.profit);
+    cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.setAttribute('visibility', 'visible');
+    dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('visibility', 'visible');
+    tip.replaceChildren(
+      el('div', { class: 't-date' }, new Date(p.d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })),
+      el('div', { class: 'row' }, 'Profit', el('b', { class: p.profit < 0 ? 'neg' : null }, money(p.profit))),
+      el('div', { class: 'row' }, 'Mat cost', el('b', {}, money(p.cost))),
+      el('div', { class: 'row' }, 'Sells for', el('b', {}, money(p.revenue))),
+      el('div', { class: 'row' }, 'Listed on AH', el('b', {}, p.listed)),
+    );
+    tip.style.display = 'block';
+    const scale = container.clientWidth / W;
+    const left = x * scale, tw = tip.offsetWidth;
+    tip.style.left = Math.min(Math.max(0, left + 12 + tw > container.clientWidth ? left - tw - 12 : left + 12), container.clientWidth - tw) + 'px';
+    tip.style.top = '0px';
+  }
+  function hide() { current = -1; tip.style.display = 'none'; cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); }
+  function nearest(evt) {
+    const r = svg.getBoundingClientRect();
+    const px = (evt.clientX - r.left) * (W / r.width);
+    let best = 0;
+    days.forEach((t, i) => { if (Math.abs(X(t) - px) < Math.abs(X(days[best]) - px)) best = i; });
+    return best;
+  }
+  svg.addEventListener('pointermove', (e) => show(nearest(e)));
+  svg.addEventListener('pointerleave', hide);
+  svg.addEventListener('blur', hide);
+  svg.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const next = current < 0 ? last : current + (e.key === 'ArrowRight' ? 1 : -1);
+      show(Math.max(0, Math.min(last, next)));
+    } else if (e.key === 'Escape') hide();
+  });
+
+  container.append(svg, tip);
+  if (pts.length === 1) container.append(el('p', { class: 'note' }, 'One day of data so far — the line fills in as you scan on more days.'));
+}
+
+// Rendering ----------------------------------------------------------------------------
+function renderSetup(data) {
+  const app = document.getElementById('app');
+  const box = el('div', { class: 'panel setup' });
+  if (data.error === 'notFound') {
+    box.append(
+      el('h2', {}, 'No CraftProfit data found yet'),
+      el('p', {}, 'In game: open your profession windows once, go to the auction house, click ', el('b', {}, 'CraftProfit → Scan AH'), ', then type ', el('code', {}, '/reload'), '. WoW only writes addon data to disk on /reload, logout or exit.'),
+      el('p', { class: 'meta' }, 'Looked in: ' + data.searched.join(', ')),
+    );
+  } else if (data.error === 'parse') {
+    box.append(el('h2', {}, 'Could not read CraftProfit.lua'), el('p', {}, data.message), el('p', { class: 'meta' }, data.file));
+  } else {
+    box.append(el('h2', {}, 'No scans recorded yet'),
+      el('p', {}, 'Scan the auction house with CraftProfit, then /reload. Each scan adds a day to the history here.'));
+  }
+  app.replaceChildren(box);
+}
+
+function render() {
+  const data = state.data;
+  const meta = document.getElementById('meta');
+  const realmSel = document.getElementById('realm');
+  if (!data || data.error || !Object.keys(data.realms || {}).length) {
+    meta.textContent = '';
+    realmSel.hidden = true;
+    renderSetup(data || {});
+    return;
+  }
+  const realmKeys = Object.keys(data.realms).sort();
+  if (!realmKeys.includes(state.realm)) {
+    state.realm = realmKeys.reduce((a, b) => ((data.realms[b].lastScan || {}).t || 0) > ((data.realms[a].lastScan || {}).t || 0) ? b : a);
+  }
+  realmSel.hidden = realmKeys.length < 2;
+  realmSel.replaceChildren(...realmKeys.map((k) => el('option', { value: k, selected: k === state.realm }, k)));
+  const realm = data.realms[state.realm];
+  const scanT = realm.lastScan && realm.lastScan.t * 1000;
+  updateMeta();
+
+  const profitable = realm.recipes.filter((r) => r.latest.profit > 0);
+  const app = document.getElementById('app');
+  const frag = document.createDocumentFragment();
+
+  // Alerts
+  const scannedToday = realm.recipes.some((r) => r.isCurrent);
+  const alerts = el('section', { class: 'panel alerts', 'aria-labelledby': 'alerts-h' }, el('h2', { id: 'alerts-h' }, "Today's alerts"));
+  if (realm.alerts.length) {
+    alerts.append(el('ul', {}, realm.alerts.map((a) => el('li', { class: 'alert' },
+      el('span', { class: 'icon', 'aria-hidden': 'true' }, '▲'),
+      el('div', {},
+        el('div', { class: 'what' }, qdot(a.quality), a.name, a.newlyProfitable ? el('span', { class: 'badge' }, 'Newly profitable') : null),
+        el('div', { class: 'detail' }, `Profit up today: ${money(a.prevProfit)} on ${fmtDay(a.prevDay)} → ${money(a.profit)} now`),
+      ),
+      el('div', { class: 'amount' }, '+' + money(a.amount), a.pct != null ? el('div', { class: 'detail' }, '+' + pct(a.pct)) : null),
+    ))));
+  } else if (!scannedToday) {
+    alerts.append(el('p', { class: 'empty' }, scanT ? `No scan today yet — the last one was ${ago(scanT)}. Scan the AH and /reload to check today's prices.` : 'No scans yet.'));
+  } else {
+    alerts.append(el('p', { class: 'empty' }, 'No profitable recipes have gone up in profit since the previous scanned day.'));
+  }
+  frag.append(alerts);
+
+  // Tiles
+  const best = profitable[0];
+  const longest = profitable.reduce((a, r) => (!a || (r.streak && r.streak.days > a.streak.days)) ? r : a, null);
+  const tile = (label, value, sub) => el('div', { class: 'panel tile' }, el('div', { class: 'label' }, label), el('div', { class: 'value' }, value), sub ? el('div', { class: 'sub' }, sub) : null);
+  frag.append(el('section', { class: 'tiles' },
+    tile('Profitable recipes', `${profitable.length}`, `of ${realm.recipes.length} known recipes`),
+    tile('Best profit per craft', best ? money(best.latest.profit, { short: true }) : '—', best ? best.name : null),
+    tile('Longest profitable run', longest ? `${longest.streak.days} days` : '—', longest ? longest.name : null),
+    tile('Up today', `${realm.alerts.length}`, 'recipes with higher profit than last time'),
+  ));
+
+  // Controls
+  const controls = el('div', { class: 'controls' },
+    el('input', { type: 'search', placeholder: 'Search recipes or mats', value: state.query, 'aria-label': 'Search',
+      oninput: (e) => { state.query = e.target.value; renderList(); } }),
+    el('label', {}, 'Sort by',
+      el('select', { onchange: (e) => { state.sort = e.target.value; saveView(); renderList(); } },
+        [['profit', 'Profit per craft'], ['streak', 'Days profitable'], ['margin', 'Margin'], ['today', 'Change today'], ['name', 'Name']]
+          .map(([v, t]) => el('option', { value: v, selected: state.sort === v }, t)))),
+    el('label', {}, el('input', { type: 'checkbox', checked: state.showAll,
+      onchange: (e) => { state.showAll = e.target.checked; saveView(); renderList(); } }), 'Show unprofitable recipes too'),
+  );
+  const list = el('section', { 'aria-labelledby': 'list-h' }, el('h2', { id: 'list-h' }, 'Profitable recipes'), controls, el('div', { class: 'grid', id: 'grid' }));
+  frag.append(list);
+  app.replaceChildren(frag);
+  renderList();
+}
+
+function updateMeta() {
+  const data = state.data;
+  if (!data || data.error || !data.realms[state.realm]) return;
+  const realm = data.realms[state.realm];
+  const scanT = realm.lastScan && realm.lastScan.t * 1000;
+  document.getElementById('meta').textContent = [
+    state.realm,
+    scanT ? `last AH scan ${ago(scanT)}` + (realm.lastScan.auctions ? ` (${realm.lastScan.auctions.toLocaleString()} auctions)` : '') : null,
+    `data saved ${ago(Date.parse(data.fileUpdated))}`,
+  ].filter(Boolean).join(' · ');
+}
+
+function renderList() {
+  const realm = state.data.realms[state.realm];
+  const q = state.query.trim().toLowerCase();
+  let rows = realm.recipes.filter((r) => state.showAll || r.latest.profit > 0);
+  if (q) rows = rows.filter((r) => [r.name, r.char, r.prof, ...r.mats.map((m) => m.name)].join(' ').toLowerCase().includes(q));
+  const key = {
+    profit: (r) => r.latest.profit ?? -Infinity,
+    streak: (r) => r.streak ? r.streak.days : -1,
+    margin: (r) => r.latest.margin ?? -Infinity,
+    today: (r) => r.todayChange ? r.todayChange.amount : -Infinity,
+  }[state.sort];
+  rows.sort(key ? (a, b) => key(b) - key(a) || a.name.localeCompare(b.name) : (a, b) => a.name.localeCompare(b.name));
+
+  document.getElementById('list-h').textContent = state.showAll ? 'All recipes' : 'Profitable recipes';
+  const grid = document.getElementById('grid');
+  if (!rows.length) {
+    grid.replaceChildren(el('p', { class: 'empty' }, q ? 'No recipes match your search.' : 'None of your recipes is profitable at the last scanned prices.'));
+    return;
+  }
+  grid.replaceChildren(...rows.map(card));
+  requestAnimationFrame(() => grid.querySelectorAll('.chart').forEach((c) => drawChart(c, c._recipe)));
+}
+
+function card(r) {
+  const L = r.latest;
+  const neg = L.profit != null && L.profit < 0;
+  const facts = el('div', { class: 'facts' });
+  if (r.streak) {
+    facts.append(el('span', {}, 'Profitable for ', el('strong', {}, r.streak.days === 1 ? '1 day' : `${r.streak.days} days`),
+      r.streak.days > 1 ? ` · since ${fmtDay(r.streak.since)}` : ''));
+  } else {
+    facts.append(el('span', {}, 'Not profitable'));
+  }
+  facts.append(el('span', {}, 'Margin ', el('strong', {}, pct(L.margin))));
+  if (r.todayChange && r.todayChange.amount !== 0) {
+    const up = r.todayChange.amount > 0;
+    facts.append(el('span', { class: 'delta ' + (up ? 'up' : 'down') }, (up ? '▲ +' : '▼ ') + money(r.todayChange.amount) + ' today'));
+  } else if (r.todayChange) {
+    facts.append(el('span', {}, 'No change today'));
+  }
+  facts.append(el('span', {}, 'Listed ', el('strong', {}, L.listed)));
+
+  const chart = el('div', { class: 'chart' });
+  chart._recipe = r;
+
+  const table = el('table', {},
+    el('thead', {}, el('tr', {}, el('th', {}, 'Day'), el('th', {}, 'Mat cost'), el('th', {}, 'Sells for'), el('th', {}, 'Profit'), el('th', {}, 'Listed'))),
+    el('tbody', {}, r.series.slice().reverse().map((p) => el('tr', {},
+      el('td', {}, fmtDay(p.d)), el('td', {}, money(p.cost)), el('td', {}, money(p.revenue)),
+      el('td', { class: p.profit < 0 ? 'neg' : null }, money(p.profit)), el('td', {}, p.listed)))));
+
+  return el('article', { class: 'panel card' },
+    el('div', { class: 'card-head' },
+      el('div', { class: 'card-title' },
+        el('div', { class: 'name' }, qdot(r.quality), r.name, r.outQty && r.outQty !== 1 ? ` ×${r.outQty}` : ''),
+        el('div', { class: 'who' }, [r.char, r.prof].filter(Boolean).join(' · '),
+          r.isCurrent ? '' : el('span', { class: 'stale' }, ` · prices from ${fmtDay(L.d)}`))),
+      el('div', { class: 'profit' },
+        el('div', { class: 'big' + (neg ? ' neg' : '') }, money(L.profit, { short: true })),
+        el('div', { class: 'per' }, 'profit per craft'))),
+    facts,
+    chart,
+    el('ul', { class: 'mats', 'aria-label': 'Materials per craft' }, r.mats.map((m) => el('li', {},
+      el('span', {}, `${m.qty}× ${m.name}`, ' ', el('span', { class: 'src' }, m.source === 'craft' ? 'craft it' : m.source === 'vendor' ? 'vendor' : m.source === 'ah' ? 'AH' : 'no price')),
+      el('span', {}, m.unit != null ? money(m.unit * m.qty) : '—')))),
+    el('details', {}, el('summary', {}, 'Daily values'), el('div', { class: 'table-scroll' }, table)),
+  );
+}
+
+// Data loading -------------------------------------------------------------------------
+let lastStamp = null;
+async function load() {
+  try {
+    const res = await fetch('/api/data', { cache: 'no-store' });
+    const data = await res.json();
+    const stamp = data.fileUpdated || data.error;
+    if (stamp !== lastStamp || !state.data) {
+      lastStamp = stamp;
+      state.data = data;
+      render();
+    }
+  } catch (e) {
+    if (!state.data) document.getElementById('app').replaceChildren(el('p', { class: 'empty' }, 'Cannot reach the dashboard server. Is it still running?'));
+  }
+}
+document.getElementById('realm').addEventListener('change', (e) => { state.realm = e.target.value; saveView(); render(); });
+let resizeTimer;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => document.querySelectorAll('.chart').forEach((c) => drawChart(c, c._recipe)), 150); });
+load();
+setInterval(load, 15000);
+setInterval(updateMeta, 60000);
+</script>
+</body>
+</html>
