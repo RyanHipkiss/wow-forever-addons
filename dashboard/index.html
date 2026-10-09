@@ -207,11 +207,11 @@ function money(copper, { short = false } = {}) {
   const neg = copper < 0;
   let c = Math.round(Math.abs(copper));
   const g = Math.floor(c / 10000), s = Math.floor(c / 100) % 100; c = c % 100;
-  const parts = [];
+  let parts = [];
   if (g) parts.push(g.toLocaleString() + 'g');
-  if (s || (g && !short)) parts.push(s + 's');
-  if (!short || !g) parts.push(c + 'c');
-  if (short && g) parts.length = Math.min(parts.length, 2);
+  if (s) parts.push(s + 's');
+  if (c || (!g && !s)) parts.push(c + 'c');
+  if (short && g) parts = parts.filter((p) => !p.endsWith('c'));
   return (neg ? '−' : '') + parts.join(' ');
 }
 const pct = (v) => v == null ? '—' : (v >= 0 ? '' : '−') + Math.abs(v * 100).toFixed(0) + '%';
