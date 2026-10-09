@@ -12,4 +12,5 @@ Scanner.lua
 Recipes.lua
 Profit.lua
 History.lua
+Sales.lua
 UI.lua

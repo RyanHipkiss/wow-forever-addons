@@ -141,6 +141,8 @@
   .delta.up { color: var(--good-text); }
   .delta.down { color: var(--critical-text); }
   .stale { color: var(--text-muted); font-size: 12px; }
+  .sold { font-size: 13px; color: var(--text-secondary); }
+  .sold strong { color: var(--text-primary); }
 
   .chart { position: relative; }
   .chart svg { display: block; width: 100%; height: 150px; overflow: visible; }
@@ -186,9 +188,9 @@
 const themeParam = new URLSearchParams(location.search).get('theme');
 if (themeParam === 'light' || themeParam === 'dark') document.documentElement.dataset.theme = themeParam;
 const QUALITY = ['#9d9d9d', '#ffffff', '#1eff00', '#0070dd', '#a335ee', '#ff8000', '#e6cc80'];
-const state = { data: null, realm: null, sort: 'profit', query: '', showAll: false };
+const state = { data: null, realm: null, sort: 'profit', query: '', showAll: false, salesDays: 30, minSold: 0 };
 try { Object.assign(state, JSON.parse(localStorage.getItem('craftprofit-view') || '{}'), { data: null }); } catch {}
-const saveView = () => { try { localStorage.setItem('craftprofit-view', JSON.stringify({ realm: state.realm, sort: state.sort, showAll: state.showAll })); } catch {} };
+const saveView = () => { try { localStorage.setItem('craftprofit-view', JSON.stringify({ realm: state.realm, sort: state.sort, showAll: state.showAll, salesDays: state.salesDays, minSold: state.minSold })); } catch {} };
 
 // Helpers ------------------------------------------------------------------------
 function el(tag, attrs = {}, ...children) {
@@ -224,6 +226,15 @@ function ago(ms) {
   if (h < 48) return h + ' h ago';
   return Math.round(h / 24) + ' days ago';
 }
+// Your own sales at or above the price the profit is based on, in the chosen period.
+// Sales below that price are left out entirely.
+function salesAtPrice(r) {
+  if (r.priceThreshold == null) return [];
+  const since = state.salesDays ? Date.now() / 1000 - state.salesDays * 86400 : 0;
+  return r.sales.filter((x) => x.t >= since && x.unit >= r.priceThreshold - 0.5);
+}
+const soldCount = (r) => salesAtPrice(r).reduce((n, x) => n + x.count, 0);
+const periodLabel = () => state.salesDays ? `last ${state.salesDays} days` : 'all time';
 const qdot = (q) => el('span', { class: 'qdot', style: `background:${QUALITY[q] || QUALITY[1]}`, 'aria-hidden': 'true' });
 
 // Chart: one series (profit per craft) over time ---------------------------------
@@ -412,8 +423,15 @@ function render() {
       oninput: (e) => { state.query = e.target.value; renderList(); } }),
     el('label', {}, 'Sort by',
       el('select', { onchange: (e) => { state.sort = e.target.value; saveView(); renderList(); } },
-        [['profit', 'Profit per craft'], ['streak', 'Days profitable'], ['margin', 'Margin'], ['today', 'Change today'], ['name', 'Name']]
+        [['profit', 'Profit per craft'], ['streak', 'Days profitable'], ['sold', 'Sold at price'], ['margin', 'Margin'], ['today', 'Change today'], ['name', 'Name']]
           .map(([v, t]) => el('option', { value: v, selected: state.sort === v }, t)))),
+    el('label', {}, 'Sales in',
+      el('select', { onchange: (e) => { state.salesDays = Number(e.target.value); saveView(); renderList(); } },
+        [[7, 'Last 7 days'], [30, 'Last 30 days'], [90, 'Last 90 days'], [0, 'All time']]
+          .map(([v, t]) => el('option', { value: v, selected: state.salesDays === v }, t)))),
+    el('label', {}, 'Min sold at price',
+      el('input', { type: 'number', min: 0, step: 1, value: state.minSold, style: 'width:70px',
+        oninput: (e) => { state.minSold = Math.max(0, Number(e.target.value) || 0); saveView(); renderList(); } })),
     el('label', {}, el('input', { type: 'checkbox', checked: state.showAll,
       onchange: (e) => { state.showAll = e.target.checked; saveView(); renderList(); } }), 'Show unprofitable recipes too'),
   );
@@ -439,10 +457,12 @@ function renderList() {
   const realm = state.data.realms[state.realm];
   const q = state.query.trim().toLowerCase();
   let rows = realm.recipes.filter((r) => state.showAll || r.latest.profit > 0);
+  if (state.minSold > 0) rows = rows.filter((r) => soldCount(r) >= state.minSold);
   if (q) rows = rows.filter((r) => [r.name, r.char, r.prof, ...r.mats.map((m) => m.name)].join(' ').toLowerCase().includes(q));
   const key = {
     profit: (r) => r.latest.profit ?? -Infinity,
     streak: (r) => r.streak ? r.streak.days : -1,
+    sold: soldCount,
     margin: (r) => r.latest.margin ?? -Infinity,
     today: (r) => r.todayChange ? r.todayChange.amount : -Infinity,
   }[state.sort];
@@ -451,7 +471,9 @@ function renderList() {
   document.getElementById('list-h').textContent = state.showAll ? 'All recipes' : 'Profitable recipes';
   const grid = document.getElementById('grid');
   if (!rows.length) {
-    grid.replaceChildren(el('p', { class: 'empty' }, q ? 'No recipes match your search.' : 'None of your recipes is profitable at the last scanned prices.'));
+    grid.replaceChildren(el('p', { class: 'empty' }, q ? 'No recipes match your search.'
+      : state.minSold > 0 ? `No recipes where you sold at least ${state.minSold} at or above the listed price (${periodLabel()}).`
+      : 'None of your recipes is profitable at the last scanned prices.'));
     return;
   }
   grid.replaceChildren(...rows.map(card));
@@ -476,6 +498,16 @@ function card(r) {
     facts.append(el('span', {}, 'No change today'));
   }
   facts.append(el('span', {}, 'Listed ', el('strong', {}, L.listed)));
+  const good = salesAtPrice(r);
+  const sold = good.reduce((n, x) => n + x.count, 0);
+  const soldLine = el('div', { class: 'sold' });
+  if (r.priceThreshold == null) {
+    soldLine.append('No AH price to compare sales against');
+  } else if (sold) {
+    soldLine.append('You sold ', el('strong', {}, String(sold)), ` at ≥ ${money(r.priceThreshold)} · ${periodLabel()} · last sale ${ago(good[0].t * 1000)}`);
+  } else {
+    soldLine.append(`No sales at ≥ ${money(r.priceThreshold)} · ${periodLabel()}`);
+  }
 
   const chart = el('div', { class: 'chart' });
   chart._recipe = r;
@@ -496,11 +528,18 @@ function card(r) {
         el('div', { class: 'big' + (neg ? ' neg' : '') }, money(L.profit, { short: true })),
         el('div', { class: 'per' }, 'profit per craft'))),
     facts,
+    soldLine,
     chart,
     el('ul', { class: 'mats', 'aria-label': 'Materials per craft' }, r.mats.map((m) => el('li', {},
       el('span', {}, `${m.qty}× ${m.name}`, ' ', el('span', { class: 'src' }, m.source === 'craft' ? 'craft it' : m.source === 'vendor' ? 'vendor' : m.source === 'ah' ? 'AH' : 'no price')),
       el('span', {}, m.unit != null ? money(m.unit * m.qty) : '—')))),
     el('details', {}, el('summary', {}, 'Daily values'), el('div', { class: 'table-scroll' }, table)),
+    good.length ? el('details', {}, el('summary', {}, `Your sales at ≥ ${money(r.priceThreshold)} (${good.length} sale${good.length === 1 ? '' : 's'})`),
+      el('div', { class: 'table-scroll' }, el('table', {},
+        el('thead', {}, el('tr', {}, el('th', {}, 'Date'), el('th', {}, 'Qty'), el('th', {}, 'Price each'))),
+        el('tbody', {}, good.map((x) => el('tr', {},
+          el('td', {}, new Date(x.t * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })),
+          el('td', {}, x.count), el('td', {}, money(x.unit)))))))) : null,
   );
 }
 

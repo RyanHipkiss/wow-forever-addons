@@ -49,7 +49,7 @@ function localToday() {
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
 }
 
-function buildRealm(h, today) {
+function buildRealm(h, today, sales = [], ahCut = 0.05) {
   const items = h.items || {};
   const itemName = (id) => (items[id] && items[id].name) || `Item ${id}`;
   const recipes = [];
@@ -63,6 +63,7 @@ function buildRealm(h, today) {
       cost: byDay[d].cost ?? null,
       revenue: byDay[d].revenue ?? null,
       listed: byDay[d].listed ?? 0,
+      ahMin: byDay[d].ahMin ?? null,
     }));
     if (!series.length) continue;
     const latest = series[series.length - 1];
@@ -87,6 +88,15 @@ function buildRealm(h, today) {
     }
 
     const item = items[r.item] || {};
+    const outName = item.name || r.name;
+    // "At that price": the lowest AH buyout per item that today's profit is based on.
+    const outQty = r.outQty || 1;
+    const priceThreshold = latest.ahMin != null ? latest.ahMin
+      : latest.revenue != null ? latest.revenue / outQty / (1 - ahCut) : null;
+    const mySales = sales
+      .filter((s) => (s.item != null && Number(s.item) === Number(r.item)) || s.name === outName)
+      .map((s) => ({ t: s.t, count: s.count || 1, unit: s.price / (s.count || 1) }))
+      .sort((a, b) => b.t - a.t);
     const recipe = {
       id,
       name: item.name || r.name || `Recipe ${id}`,
@@ -102,6 +112,8 @@ function buildRealm(h, today) {
       todayChange,
       series,
       mats: (r.mats || []).map((m) => ({ ...m, name: itemName(m.id) })),
+      priceThreshold,
+      sales: mySales,
     };
     recipes.push(recipe);
 
@@ -137,7 +149,11 @@ function loadModel() {
     const db = sv.CraftProfitDB || {};
     const today = localToday();
     const realms = {};
-    for (const [key, h] of Object.entries(db.history || {})) realms[key] = buildRealm(h, today);
+    const cut = (db.settings && db.settings.ahCut) ?? 0.05;
+    for (const [key, h] of Object.entries(db.history || {})) {
+      const sales = (db.sales || {})[key];
+      realms[key] = buildRealm(h, today, Array.isArray(sales) ? sales : [], cut);
+    }
     const model = {
       file,
       fileUpdated: new Date(mtime).toISOString(),

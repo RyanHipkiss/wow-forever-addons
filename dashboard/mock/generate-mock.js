@@ -24,29 +24,30 @@ const items = {
 };
 
 // profit(d): d = 0 (oldest) .. DAYS-1 (today), in copper per craft
+// salesRate: chance of one of your auctions selling on a given day; stack: max quantity per sale
 const recipes = [
-  { id: 17635, item: 13510, prof: 'Alchemy', char: 'Ryan', cost: 1150000,
+  { id: 17635, item: 13510, salesRate: 0.35, stack: 1, prof: 'Alchemy', char: 'Ryan', cost: 1150000,
     mats: [[13468, 1, 'ah', 980000], [8846, 30, 'ah', 4200], [13423, 10, 'ah', 1600], [18256, 1, 'vendor', 4000]],
     profit: (d) => 210000 + 90000 * Math.sin(d / 7) + d * 2500 + (d === DAYS - 1 ? 120000 : 0) + noise(25000) },
-  { id: 18630, item: 14046, prof: 'Tailoring', char: 'Ryan', cost: 52000,
+  { id: 18630, item: 14046, salesRate: 0.25, stack: 1, prof: 'Tailoring', char: 'Ryan', cost: 52000,
     mats: [[14048, 5, 'craft', 8200], [8170, 2, 'ah', 2900], [14341, 1, 'vendor', 2500]],
     profit: (d) => d < 12 ? -6000 + d * 300 : 14000 + 6000 * Math.sin(d / 5) - (d === DAYS - 1 ? 7000 : 0) + noise(1500) },
   { id: 18401, item: 14048, prof: 'Tailoring', char: 'Ryan', cost: 8200, outQty: 1,
     mats: [[14047, 5, 'ah', 1640]],
     profit: () => 3100 },
-  { id: 17556, item: 13446, prof: 'Alchemy', char: 'Ryan', cost: 7900,
+  { id: 17556, item: 13446, salesRate: 0.7, stack: 5, prof: 'Alchemy', char: 'Ryan', cost: 7900,
     mats: [[13464, 2, 'ah', 2400], [13465, 1, 'ah', 2700], [8925, 1, 'vendor', 400]],
     profit: (d) => d < DAYS - 21 ? -1200 + noise(600) : 1800 + (d - (DAYS - 21)) * 90 + noise(300) + (d === DAYS - 1 ? 900 : 0) },
   { id: 17571, item: 13452, prof: 'Alchemy', char: 'Ryan', cost: 16500,
     mats: [[13465, 2, 'ah', 2700], [13466, 2, 'ah', 5300], [8925, 1, 'vendor', 400]],
     profit: (d) => d < DAYS - 1 ? -3500 + noise(1500) : 2600 },
-  { id: 17574, item: 13457, prof: 'Alchemy', char: 'Ryan', cost: 11200,
+  { id: 17574, item: 13457, salesRate: 0.3, stack: 2, prof: 'Alchemy', char: 'Ryan', cost: 11200,
     mats: [[7068, 1, 'ah', 6100], [13463, 1, 'ah', 4700], [8925, 1, 'vendor', 400]],
     profit: (d) => d < DAYS - 3 ? -900 + noise(800) : 2200 + (d - (DAYS - 3)) * 400 },
-  { id: 16641, item: 12404, prof: 'Blacksmithing', char: 'Brakka', cost: 1400, outQty: 1,
+  { id: 16641, item: 12404, salesRate: 0.6, stack: 5, prof: 'Blacksmithing', char: 'Brakka', cost: 1400, outQty: 1,
     mats: [[12365, 1, 'ah', 1400]],
     profit: (d) => d < DAYS - 5 ? 600 + noise(150) : -250 + noise(80) },
-  { id: 18245, item: 13931, prof: 'Cooking', char: 'Brakka', cost: 1900,
+  { id: 18245, item: 13931, salesRate: 0.5, stack: 10, prof: 'Cooking', char: 'Brakka', cost: 1900,
     mats: [[13757, 1, 'ah', 1850], [159, 1, 'vendor', 50]],
     profit: (d) => 900 + 400 * Math.sin(d / 9) + d * 15 + (d === DAYS - 1 ? 350 : 0) + noise(120) },
   { id: 12065, item: 10050, prof: 'Tailoring', char: 'Ryan', cost: 31000,
@@ -100,6 +101,20 @@ for (const r of recipes) {
     };
   });
 }
+// Your own sales, priced around that day's lowest buyout - some above, some below.
+const sales = [];
+for (const r of recipes) {
+  if (!r.salesRate) continue;
+  days.forEach((dt, d) => {
+    if (rand() > r.salesRate) return;
+    const count = 1 + Math.floor(rand() * r.stack);
+    const unit = (r.cost + r.profit(d)) / 0.95 * (0.9 + rand() * 0.45);
+    const t = Math.floor(dt.getTime() / 1000) - Math.floor(rand() * 20 * 3600);
+    sales.push({ name: items[r.item][0], item: r.item, count, price: Math.round(unit * count), t });
+  });
+}
+sales.sort((a, b) => a.t - b.t);
+
 days.forEach((dt, d) => {
   if (!skipped.has(d)) h.scans.push({ t: Math.floor(dt.getTime() / 1000), auctions: Math.round(31000 + noise(4000)), items: 4200 });
 });
@@ -107,7 +122,7 @@ days.forEach((dt, d) => {
 h.scans[h.scans.length - 1].t = Math.floor(Date.now() / 1000) - 300;
 
 const db = { settings: { ahCut: 0.05, marketDepth: 0.15, useCraftedMats: true, profitableOnly: true },
-  history: { 'Forever-Alliance': h } };
+  history: { 'Forever-Alliance': h }, sales: { 'Forever-Alliance': sales } };
 const out = path.join(__dirname, 'CraftProfit.mock.lua');
 fs.writeFileSync(out, '\nCraftProfitDB = ' + lua(db) + '\n');
 console.log('Wrote ' + out);
