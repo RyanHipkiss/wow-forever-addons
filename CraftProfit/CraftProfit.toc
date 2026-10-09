@@ -1,0 +1,14 @@
+## Interface: 16001
+## Title: CraftProfit
+## Notes: Scans the auction house and shows which of your recipes make a profit when you buy the mats and sell the crafted item.
+## Author: Ryan Hipkiss
+## Version: 0.1.0
+## SavedVariables: CraftProfitDB
+## IconTexture: Interface\Icons\INV_Misc_Coin_02
+
+Core.lua
+Prices.lua
+Scanner.lua
+Recipes.lua
+Profit.lua
+UI.lua
