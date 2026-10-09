@@ -25,6 +25,28 @@ E:\BattleNet\World of Warcraft\_classic_beta_\Interface\AddOns\
 
 Hover a row to see the reagent breakdown. Shift-click a row to link the item in chat. Click a column header to sort by it.
 
+## Browser dashboard
+
+Each AH scan saves a daily history of every recipe's profit. The dashboard shows it in your browser:
+
+- **Today's alerts** at the top: profitable recipes whose profit went up compared with the previous day you scanned. Recipes that have just become profitable are flagged.
+- **Profitable recipes**, each with how long it has been profitable (for example, "Profitable for 48 days · since 22 Aug"), today's change, margin, AH competition, the mats to buy, and a chart of profit per craft over time (hover it, or focus it and use the arrow keys). "Daily values" shows the numbers as a table.
+
+### Run it
+
+You need [Node.js](https://nodejs.org) 18 or newer. There is nothing to install.
+
+```
+cd C:\Users\ryan\Desktop\wow-craft-profit\dashboard
+node server.js
+```
+
+Or double-click `dashboard\start-dashboard.cmd`. Then open http://localhost:4747.
+
+WoW only writes addon data to disk on **/reload, logout or exit**. So after a scan, type `/reload`, and the dashboard picks up the new data within 15 seconds. The server looks for `CraftProfit.lua` under `E:\BattleNet\World of Warcraft\_classic_beta_\WTF\Account\*\SavedVariables\`. To use another install, set `CRAFTPROFIT_WOW` to its `_classic_beta_` folder, or pass the file path: `node server.js "<path>\CraftProfit.lua"`. Add `?theme=light` or `?theme=dark` to the URL to override your system theme.
+
+How long a recipe has been profitable is counted from the days you scanned. If you skip a few days, the run carries on as long as every day you did scan was profitable. The history keeps 400 days.
+
 ## Pricing rules
 
 - **AH market price** is the average unit price of the cheapest 15% of the listed quantity. That is roughly what you would actually pay when buying a stack of mats, and one cheap listing can't skew it.
