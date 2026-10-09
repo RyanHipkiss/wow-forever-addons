@@ -3,7 +3,8 @@ local _, CP = ...
 local UI = {}
 CP.UI = UI
 
-local ROW_HEIGHT = 20
+local ROW_HEIGHT = 36
+local LINE_HEIGHT = 16
 local COLUMNS = {
 	{ key = "name",   label = "Item",      width = 230, justify = "LEFT" },
 	{ key = "char",   label = "Crafter",   width = 120, justify = "LEFT" },
@@ -46,7 +47,7 @@ function UI:Create()
 	if self.frame then return end
 	local f = CreateFrame("Frame", "CraftProfitFrame", UIParent, "BasicFrameTemplateWithInset")
 	self.frame = f
-	f:SetSize(790, 500)
+	f:SetSize(790, 560)
 	f:SetPoint("CENTER")
 	f:SetFrameStrata("HIGH")
 	f:SetMovable(true)
@@ -60,7 +61,7 @@ function UI:Create()
 
 	f.title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	f.title:SetPoint("TOP", 0, -5)
-	f.title:SetText("CraftProfit")
+	f.title:SetText("CraftProfit - what to craft for profit")
 
 	local scan = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	scan:SetSize(110, 22)
@@ -83,6 +84,7 @@ function UI:Create()
 	searchLabel:SetPoint("RIGHT", search, "LEFT", -8, 0)
 	searchLabel:SetText("Search")
 
+	self.checks = {}
 	local function Check(label, settingKey, anchor, x)
 		local cb = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
 		cb:SetSize(24, 24)
@@ -93,6 +95,7 @@ function UI:Create()
 		cb.text:SetFontObject("GameFontHighlightSmall")
 		cb.text:SetText(label)
 		cb:SetScript("OnShow", function(self) self:SetChecked(CP.db.settings[settingKey]) end)
+		UI.checks[settingKey] = cb
 		cb:SetScript("OnClick", function(self)
 			CP.db.settings[settingKey] = self:GetChecked() and true or false
 			UI:Refresh()
@@ -220,20 +223,27 @@ function UI:GetRow(i)
 		bg:SetColorTexture(1, 1, 1, 0.04)
 	end
 	row.icon = row:CreateTexture(nil, "ARTWORK")
-	row.icon:SetSize(ROW_HEIGHT - 2, ROW_HEIGHT - 2)
+	row.icon:SetSize(ROW_HEIGHT - 4, ROW_HEIGHT - 4)
 	row.icon:SetPoint("LEFT", 0, 0)
+	local iconSpace = ROW_HEIGHT
 	row.cells = {}
 	local x = 0
 	for _, col in ipairs(COLUMNS) do
-		local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		local offset = col.key == "name" and ROW_HEIGHT + 2 or 0
-		fs:SetPoint("LEFT", x + offset, 0)
-		fs:SetSize(col.width - offset, ROW_HEIGHT)
+		local fs = row:CreateFontString(nil, "OVERLAY", col.key == "name" and "GameFontHighlight" or "GameFontHighlightSmall")
+		local offset = col.key == "name" and iconSpace or 0
+		fs:SetPoint("TOPLEFT", x + offset, -2)
+		fs:SetSize(col.width - offset, LINE_HEIGHT)
 		fs:SetJustifyH(col.justify)
 		fs:SetWordWrap(false)
 		row.cells[col.key] = fs
 		x = x + col.width + 4
 	end
+	-- Second line: the mats to buy for one craft
+	row.mats = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	row.mats:SetPoint("BOTTOMLEFT", iconSpace, 3)
+	row.mats:SetSize(760 - iconSpace, LINE_HEIGHT)
+	row.mats:SetJustifyH("LEFT")
+	row.mats:SetWordWrap(false)
 	row:SetScript("OnEnter", ShowRowTooltip)
 	row:SetScript("OnLeave", GameTooltip_Hide)
 	row:SetScript("OnClick", function(btn)
@@ -269,6 +279,21 @@ local function FillRow(row, data)
 		row.cells.margin:SetText("|cff808080--|r")
 	end
 	row.cells.listed:SetText(data.ahMin and data.listed or "|cff8080800|r")
+
+	local parts = {}
+	for _, l in ipairs(data.lines or {}) do
+		local mName = CP:ItemInfo(l.id) or ("item " .. l.id)
+		local where
+		if not l.unit then
+			where = "|cffff4040no price|r"
+		elseif l.source == "craft" then
+			where = "|cff80c0ffcraft it|r"
+		else
+			where = SOURCE_LABEL[l.source] .. " " .. CP:Money(l.unit)
+		end
+		parts[#parts + 1] = ("|cffd0d0d0%dx %s|r (%s)"):format(l.qty, mName, where)
+	end
+	row.mats:SetText("Mats: " .. table.concat(parts, ",  "))
 	row:Show()
 end
 
@@ -278,6 +303,7 @@ function UI:Refresh()
 	if not self.frame or not self.frame:IsShown() then return end
 	local s = CP.db.settings
 	local query = strtrim(self.search:GetText() or ""):lower()
+	for key, cb in pairs(self.checks) do cb:SetChecked(s[key]) end
 
 	local rows = {}
 	for _, row in ipairs(CP.Profit:Evaluate()) do
@@ -320,7 +346,11 @@ function UI:Refresh()
 
 	local recipeCount = #CP.Recipes:All()
 	if recipeCount == 0 then
-		self.frame.footer:SetText("No recipes saved yet. Open each of your profession windows once so CraftProfit can read your recipes.")
+		self.frame.footer:SetText("|cffff8040No recipes saved yet. Open each of your profession windows once so CraftProfit can read your recipes.|r")
+	elseif not CP.Prices:Snapshot() then
+		self.frame.footer:SetText("|cffff8040No auction house scan yet. Go to the auction house and click Scan AH.|r")
+	elseif #rows == 0 and s.profitableOnly then
+		self.frame.footer:SetText(("None of your %d recipes is profitable at current prices. Untick \"Profitable only\" to see them all."):format(recipeCount))
 	else
 		self.frame.footer:SetText(("Showing %d of %d recipes. AH cut %g%% (/cp cut). Sell price = lowest buyout; mat cost = cheapest of vendor, AH market price, or crafting it.")
 			:format(#rows, recipeCount, s.ahCut * 100))

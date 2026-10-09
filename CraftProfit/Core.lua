@@ -8,7 +8,7 @@ local DEFAULTS = {
 		ahCut = 0.05,          -- auction house cut taken from the sale
 		marketDepth = 0.15,    -- share of listed quantity averaged for the "market" price
 		useCraftedMats = true, -- price a mat at its own craft cost if that is cheaper
-		profitableOnly = false,
+		profitableOnly = true,
 		hideNoListings = false,
 	},
 	prices = {},   -- [realmKey] = { scanTime, auctions, items = { [itemID] = { min, mkt, qty } } }

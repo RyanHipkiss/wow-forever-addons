@@ -17,10 +17,11 @@ E:\BattleNet\World of Warcraft\_classic_beta_\Interface\AddOns\
 1. **Open each profession window once** on every character. CraftProfit saves the recipes that character knows, and the recipes stay saved across all your alts.
 2. **Visit a trade goods vendor** (optional, but it helps). CraftProfit records what merchants charge, so threads, vials, flux and other vendor mats get priced.
 3. **Go to the auction house and click "CraftProfit", then "Scan AH".** This takes a full snapshot of the AH. Blizzard allows one full scan every 15 minutes.
-4. The window lists every recipe with:
-   - **Mat cost**: the cheapest way to get each reagent, whether from a vendor, the AH market price, or crafting it yourself (for example, making Bolts of Linen instead of buying them).
-   - **Sells for**: the lowest AH buyout minus the AH cut. If the vendor pays more, it uses the vendor price, marked `(v)`.
-   - **Profit**, **Margin** and **Listed**. Listed is how many are on the AH, which shows how much competition there is.
+4. **When the scan finishes, the window opens on the profitable recipes, most profitable first.** Each row shows:
+   - the item you craft, who can craft it, and the **Mat cost**, **Sells for**, **Profit**, **Margin** and **Listed** count (how many are on the AH, which shows the competition);
+   - underneath, **the mats to buy for one craft** and where each comes from: the AH price, the vendor price, or "craft it" when making it yourself is cheaper (for example, Bolts of Linen).
+
+   Mat cost uses the cheapest of the vendor price, the AH market price, or your own craft cost. Sells for is the lowest AH buyout minus the AH cut; if a vendor pays more, it uses that and shows `(v)`. Untick **Profitable only** to see every recipe.
 
 Hover a row to see the reagent breakdown. Shift-click a row to link the item in chat. Click a column header to sort by it.
 
