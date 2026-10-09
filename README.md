@@ -32,6 +32,10 @@ Each AH scan saves a daily history of every recipe's profit. The dashboard shows
 - **Today's alerts** at the top: profitable recipes whose profit went up compared with the previous day you scanned. Recipes that have just become profitable are flagged.
 - **Profitable recipes**, each with how long it has been profitable (for example, "Profitable for 48 days · since 22 Aug"), today's change, margin, AH competition, the mats to buy, and a chart of profit per craft over time (hover it, or focus it and use the arrow keys). "Daily values" shows the numbers as a table.
 
+### Sales at price
+
+WoW doesn't tell addons what other players' auctions sold for, so CraftProfit tracks **your own sales**. It reads your "Auction successful" mails whenever you open a mailbox, so open the mailbox before taking the gold. Each recipe card shows how many you sold **at or above the price its profit is based on** (the lowest AH buyout from the latest scan). Sales below that price aren't counted. You can pick a period (7, 30 or 90 days, or all time), set **Min sold at price** to hide recipes that haven't sold enough, or sort by **Sold at price**.
+
 ### Run it
 
 You need [Node.js](https://nodejs.org) 18 or newer. There is nothing to install.
