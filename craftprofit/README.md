@@ -41,7 +41,7 @@ WoW doesn't tell addons what other players' auctions sold for, so CraftProfit tr
 You need [Node.js](https://nodejs.org) 18 or newer. There is nothing to install.
 
 ```
-cd C:\Users\ryan\Desktop\wow-craft-profit\dashboard
+cd craftprofit\dashboard
 node server.js
 ```
 
